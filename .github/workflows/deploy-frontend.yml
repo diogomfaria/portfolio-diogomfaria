@@ -1,0 +1,54 @@
+name: Deploy Front-end (Next.js)
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - 'portfolio-front/**'
+      - 'pnpm-workspace.yaml'
+      - 'pnpm-lock.yaml'
+      - '.github/workflows/deploy-frontend.yml'
+
+env:
+  PROJECT_ID: 861497776029 
+  REGION: us-central1
+  REPO_NAME: portfolio-images
+  SERVICE_NAME: portfolio-front
+
+jobs:
+  deploy-frontend:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write
+    steps:
+      - name: ⬇️ Checkout do Código
+        uses: actions/checkout@v4
+
+      - name: 🔐 Autenticar no GCP
+        uses: google-github-actions/auth@v2
+        with:
+          workload_identity_provider: ${{ secrets.GCP_WORKLOAD_IDENTITY_PROVIDER }}
+          service_account: ${{ secrets.GCP_SERVICE_ACCOUNT }}
+
+      - name: 🐳 Configurar Docker
+        run: gcloud auth configure-docker ${{ env.REGION }}-docker.pkg.dev --quiet
+
+      - name: 📦 Build da Imagem
+        run: |-
+          IMAGE_PATH="${{ env.REGION }}-docker.pkg.dev/${{ env.PROJECT_ID }}/${{ env.REPO_NAME }}/frontend:${{ github.sha }}"
+          # O contexto do build também é a raiz!
+          docker build -f portfolio-front/Dockerfile -t $IMAGE_PATH .
+          docker push $IMAGE_PATH
+
+      - name: 🚀 Deploy no Cloud Run
+        uses: google-github-actions/deploy-cloudrun@v2
+        with:
+          service: ${{ env.SERVICE_NAME }}
+          region: ${{ env.REGION }}
+          image: ${{ env.REGION }}-docker.pkg.dev/${{ env.PROJECT_ID }}/${{ env.REPO_NAME }}/frontend:${{ github.sha }}
+          flags: >
+            --allow-unauthenticated
+            --min-instances=0
+            --max-instances=2
