@@ -38,9 +38,8 @@ jobs:
       - name: 📦 Build da Imagem
         run: |-
           IMAGE_PATH="${{ env.REGION }}-docker.pkg.dev/${{ env.PROJECT_ID }}/${{ env.REPO_NAME }}/backend:${{ github.sha }}"
-          # O contexto do build (o ponto) é a raiz do monorepo, para acessar o lockfile!
+          # O contexto (o ponto final) deve ser a raiz para o pnpm enxergar o workspace
           docker build -f backend/Dockerfile -t $IMAGE_PATH .
-          docker push $IMAGE_PATH
 
       - name: 🚀 Deploy no Cloud Run
         uses: google-github-actions/deploy-cloudrun@v2
