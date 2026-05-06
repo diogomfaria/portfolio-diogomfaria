@@ -3,25 +3,25 @@ FROM node:20-alpine AS builder
 RUN npm install -g pnpm
 WORKDIR /app
 
-# Copia a raiz para pegar o workspace e o lockfile único
-COPY . .
+# Copia os arquivos de configuração da raiz (estando no contexto da raiz)
+COPY pnpm-lock.yaml pnpm-workspace.yaml package.json ./
+# Copia o código do backend
+COPY backend/ ./backend/
 
-# Instala todas as dependências do monorepo
-RUN pnpm install --frozen-lockfile
+# Instala apenas as dependências necessárias para o backend
+RUN pnpm install --filter backend --frozen-lockfile
 
-# Compila o backend
+# Build do projeto
 RUN pnpm --filter backend run build
-
-# Isola o backend e suas dependências de produção na pasta /app/pruned
-RUN pnpm --filter backend --prod deploy pruned
 
 # Estágio 2: Runner
 FROM node:20-alpine AS runner
 WORKDIR /app
 USER node
 
-# Traz apenas o que foi isolado pelo deploy
-COPY --from=builder /app/pruned .
+COPY --from=builder /app/backend/package.json ./
+COPY --from=builder /app/backend/dist ./dist
+COPY --from=builder /app/backend/node_modules ./node_modules
 
 EXPOSE 8080
 ENV PORT=8080
