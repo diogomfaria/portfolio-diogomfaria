@@ -1,14 +1,31 @@
+# Estágio 1: Build
 FROM node:20-alpine AS builder
 RUN npm install -g pnpm
 WORKDIR /app
-COPY . . 
-# O comando abaixo isola o backend e traz TODAS as dependências reais (sem links)
-RUN pnpm --filter backend deploy --prod pruned
 
+# Copia os arquivos de configuração da raiz (estando no contexto da raiz)
+COPY pnpm-lock.yaml pnpm-workspace.yaml package.json ./
+# Copia o código do backend
+COPY backend/ ./backend/
+
+# Instala apenas as dependências necessárias para o backend
+RUN pnpm install --filter backend --frozen-lockfile
+
+# Build do projeto
+RUN pnpm --filter backend run build
+
+# Estágio 2: Runner
 FROM node:20-alpine AS runner
 WORKDIR /app
-# Agora copiamos a pasta que o pnpm já isolou pra gente
-COPY --from=builder /app/pruned .
+USER node
+
+COPY --from=builder /app/backend/package.json ./
+COPY --from=builder /app/backend/dist ./dist
+COPY --from=builder /app/backend/node_modules ./node_modules
+
 EXPOSE 8080
 ENV PORT=8080
-CMD ["node", "dist/main.js"]
+ENV NODE_ENV=production
+
+RUN ls -la dist/
+CMD ["node", "dist/main.js"] || (echo "ERRO FATAL NO NODEJS:" && node dist/main.js 2>&1)
