@@ -11,7 +11,7 @@ on:
       - '.github/workflows/deploy-frontend.yml'
 
 env:
-  PROJECT_ID: 861497776029 
+  PROJECT_ID: portfolio-495417
   REGION: us-central1
   REPO_NAME: portfolio-images
   SERVICE_NAME: portfolio-front
