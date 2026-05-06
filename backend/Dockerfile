@@ -16,7 +16,7 @@ RUN pnpm --filter backend run build
 
 # Estágio 2: Isolamento (A "mágica" do pnpm)
 # O comando deploy cria uma pasta com TUDO o que o backend precisa para rodar
-RUN pnpm --filter backend --prod deploy /app/isolated
+RUN pnpm --filter backend --prod deploy /app/isolated --legacy
 
 # Estágio 3: Runner (Imagem final leve)
 FROM node:20-alpine AS runner
